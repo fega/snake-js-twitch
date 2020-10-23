@@ -3,15 +3,29 @@
  * @enum {string} 'up' | 'down' | 'left' | 'right'
  */
 const SQUARE_SIZE = 20;
-const GRID_HEIGHT = 35;
-const GRID_WIDTH = 20;
+const GRID_HEIGHT = 20;
+const GRID_WIDTH = 30;
 const UP = 'up';
 const DOWN = 'down';
 const RIGHT = 'right';
 const LEFT = 'left';
 
-
+let speed = 3;
 let counter = 0;
+
+class World{
+
+  update(){
+    this.drawWalls();
+  }
+  drawWalls(){
+    fill('brown')
+    rect(0, 0, SQUARE_SIZE, SQUARE_SIZE * GRID_HEIGHT )
+    rect(0, 0, SQUARE_SIZE * GRID_WIDTH, SQUARE_SIZE )
+    rect(SQUARE_SIZE * (GRID_WIDTH -1), 0, SQUARE_SIZE, SQUARE_SIZE * GRID_HEIGHT )
+    rect(0, SQUARE_SIZE * (GRID_HEIGHT-1), SQUARE_SIZE * GRID_WIDTH, SQUARE_SIZE )
+  }
+}
 
 class SnakeSquare {
   constructor(life = 3, isHead = false, initialPosition = [0, 0]) {
@@ -38,7 +52,6 @@ class SnakeSquare {
   update() {
     // si la vida es 0, vamo' a destruir
     this.life = this.life - 1;
-    // console.log('vida de ', this.counter, ' es ', this.life)
     // Checkear si hay colision con la comida
 
     // si el cuadrito is head, creamos otro cuadrito y decimos que es head
@@ -62,28 +75,53 @@ class SnakeSquare {
 
 class FoodGenerator{
   constructor(){
-    this.position = [10, 10];
+    this.position = [4, 4];
   }
 
   update(){
+    this.draw()
+  }
+
+  draw(){
+
+    fill('red');
+    circle(
+      this.position[0] * SQUARE_SIZE + SQUARE_SIZE/2,
+      this.position[1] * SQUARE_SIZE + SQUARE_SIZE/2,
+      SQUARE_SIZE
+    );
+  }
+
+  teletransport(){
     
+    this.position = [
+      Math.round(Math.random() * (GRID_WIDTH-3)) + 1,
+      Math.round(Math.random() * (GRID_HEIGHT-3)) + 1,
+    ]
+    console.log('nueva position', this.position)
   }
 }
+
 
 class Snake {
   constructor() {
     this.futureDirection = DOWN;
     this.direction = DOWN;
-    this.long = 4;
+    this.size = 4;
+    this.score = 0;
 
     this.squares = [
-      new SnakeSquare(4, true, [0, 2])
+      new SnakeSquare(4, true, [2, 2])
     ]
+
+    this.food = new FoodGenerator();
+
     this.head = this.squares[0];
   }
 
   update() {
     // iterar por cada uno de los cuadritos
+    this.updateHead();
     this.squares.forEach((cuadrito, index) => {
       cuadrito.update();
       if (cuadrito.life == 0) {
@@ -91,11 +129,13 @@ class Snake {
       } else {
         cuadrito.draw();
       }
+      this.checkBodyCollision(cuadrito)
     });
 
-    this.updateHead();
-    // console.log(this.squares);
-    console.log('la direccion de la snake ', this.direction)
+    this.checkFoodCollision();
+    this.checkWallCollision();
+    this.food.update();
+    
     //   revisar si hay colisiones con la cabeza, en ese caso morir
   }
 
@@ -108,7 +148,6 @@ class Snake {
     if (this.direction===LEFT){
       newX = x -1;
     } else if (this.direction === RIGHT){
-      console.log('MUEVASE A LA DERECHA')
       newX = x + 1;
     }
 
@@ -119,17 +158,57 @@ class Snake {
       newY = y + 1;
     }
 
-    console.log('new X: ', newX, 'newY: ', newY, 'direccion:', this.direction);
-
     this.head.isHead = false;
 
     this.head = new SnakeSquare(
-      this.long,
+      this.size,
       true,
       [newX, newY]
     );
 
     this.squares.push(this.head);
+  }
+
+  checkFoodCollision(){
+    const snakePositionX = this.head.position[0];
+    const snakePositionY = this.head.position[1];
+
+    const foodPositionX = this.food.position[0];
+    const foodPositionY = this.food.position[1];
+
+    if (snakePositionX === foodPositionX && snakePositionY === foodPositionY){
+      this.addScore(1);
+      this.food.teletransport();
+      this.grow();
+      speed = speed + 1;
+      // console.log('HEY ENCONTRE COMIDA')
+    }
+  }
+
+  checkWallCollision(){
+    const snakePositionX = this.head.position[0];
+    const snakePositionY = this.head.position[1];
+
+    if (snakePositionX === -1 || snakePositionX === GRID_WIDTH-1){
+      this.destroy();
+    }
+    if (snakePositionY === -1 || snakePositionY === GRID_HEIGHT-1){
+      this.destroy();
+    }
+  }
+
+  checkBodyCollision(square){
+    if (square.isHead) return;
+  
+    const snakeX = this.head.position[0];
+    const snakeY = this.head.position[1];
+
+    const squareX = square.position[0];
+    const squareY = square.position[1];
+
+    if (snakeX === squareX && squareY === snakeY){
+      this.destroy();
+    }
   }
 
   changeDirection(direction) {
@@ -149,36 +228,48 @@ class Snake {
 
     this.futureDirection = direction;
   }
+
+  addScore(points = 1){
+    
+    this.score += points;
+    console.log('nuevo score', this.score);
+  }
+
+  grow(squares = 1){
+    this.size = this.size + squares;
+  }
+
+  destroy(){
+    console.log(this.head.position)
+    alert(`Tu puntaje fué ${this.score}`);
+    location.reload();
+  }
 }
 
-
-
-/**
- * Inicializa la culebrita
- * 
- */
-function initSnake(cuadricula, startPositions) {
-
-  // cuadricula[10]
-}
 // const prueba = new SnakeSquare();
+let mundo;
 let snake;
-
+let fondo;
+function preload(){
+  fondo = loadImage('grass.png')
+}
 
 function setup() {
-  frameRate(3);
+  frameRate(speed);
   const canvasWidth = SQUARE_SIZE * GRID_WIDTH;
   const canvasHeight = SQUARE_SIZE * GRID_HEIGHT;
   createCanvas(canvasWidth, canvasHeight);
   background(153);
 
   snake = new Snake();
-
+  mundo = new World();
 }
 
 function draw() {
-  background(153);
+  frameRate(speed);
+  image(fondo, 0, 0, 800, 800);
   snake.update();
+  mundo.update();
 }
 
 function keyPressed() {
