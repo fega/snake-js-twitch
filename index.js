@@ -249,9 +249,9 @@ class Snake {
 // const prueba = new SnakeSquare();
 let mundo;
 let snake;
-let fondo;
+// let fondo;
 function preload(){
-  fondo = loadImage('grass.png')
+  // fondo = loadImage('grass.png')
 }
 
 function setup() {
@@ -267,7 +267,8 @@ function setup() {
 
 function draw() {
   frameRate(speed);
-  image(fondo, 0, 0, 800, 800);
+  background('green');
+  // image(fondo, 0, 0, 800, 800);
   snake.update();
   mundo.update();
 }
